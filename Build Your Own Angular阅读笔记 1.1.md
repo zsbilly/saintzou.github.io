@@ -1,5 +1,5 @@
-#Build Your Own Angular阅读笔记(scope and digest)
-##脏值检测的本质
+# Build Your Own Angular阅读笔记(scope and digest)
+## 脏值检测的本质
 
 ```javascript
 function Scope() {this.$$watchers = []; }
