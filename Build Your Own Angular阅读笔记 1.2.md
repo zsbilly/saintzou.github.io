@@ -1,4 +1,4 @@
-#Build Your Own Angular阅读笔记(Scope Inheritance)
+# Build Your Own Angular阅读笔记(Scope Inheritance)
 ## 作用域的继承
 AngularJs中的作用域继承机制就是javascript的原型链继承，因为它就是这么实现的。这里需要注意，这种实现方式意味着ChildScope在构造时并没有Scope构造函数里所拥有的对象。
 ```javascript
@@ -17,7 +17,7 @@ var ChildScope = new Scope();
 >区别在于new Scope()会调用Scope()这个构造函数，而var child = new ChildScope()调用的是ChildScope(),ChildScope是个空函数，所以严格的说var child = new ChildScope(); child里并没有$$watchers[]、$$asyncQueue[] 这些属性。再看ChildScope.prototype = this，其实当你访问ChildScope.$$watchers[]时，你访问的其实是$rootScope里的$$watchers（原型链一级一级的找上去）。
 >那当我把写法换成ChildScope.prototype = Scope.prototype能有同样的效果吗？答案是不行。因为 Scope.prototype里没有$$watchers[]，此时的原型链是ChildScope->Scope.prototype，而前面的写法原型链是ChildScope->Scope->Scope.prototype，少了一级，所以是访问不了ChildScope.$$watchers[]的。
 
-##Attribute Shadowing
+## Attribute Shadowing
 名词解释，Attribute Shadowing是指在如下的测试用例中，parent.name的值在child中被child.name所遮蔽。
 ```javascript
 it("shadows a parent s property with the same name", function() {
@@ -72,7 +72,7 @@ Scope.prototype.$new = function() {
 };
 ```
 
-##digest的递归调用
+## digest的递归调用
 对于parent scope的digest调用，应当能够触发其所有descendant scope的digest。
 首先在scope中添加其子节点的存储数组，并在$new方法里对其初始化。
 
@@ -138,7 +138,7 @@ Scope.prototype.$$digestOnce = function() {
 };
 ```
 
-##让$apply, $evalAsync, $applyAsync能够触发整个scope树的digest
+## 让$apply, $evalAsync, $applyAsync能够触发整个scope树的digest
 划重点，在AngularJs里，$apply和$digest最大的区别就是，$apply触发的是整个树的digest，而$digest触发的是对应的scope(及其子节点)的digest。如果追求效率，就不要轻易的使用$apply，而多用digest替代。
 首先在scope里加上一个变量$root，指向根节点，
 ```javascript
@@ -176,7 +176,7 @@ Scope.prototype.$digest = function() {
 ```
 >这是第三次折腾$$lastDirtyWatch这个变量了，前文已经吐槽过这种所谓的‘优化’方式，还想再吐槽一遍。这种没有从本质上降低时间复杂度的‘优化’，却带来了工程上复杂度的提升，到底是不是一个明智的设计？至少目前我认为是愚蠢的。也能看出AngularJs开发者本身对于这种循环脏值检测机制，在工作效率上没有多大信心，所以不惜让代码变得丑陋也要这一点点的优化效果。
 
-##Isolated Scopes
+## Isolated Scopes
 隔离作用域的定义：在作用域树中的构造一个作用域节点，阻止其子节点（包括它本身）访问当前节点的父节点所拥有的属性(隔离了父节点和当前节点)。
 >划重点，隔离作用域和原本想象中的不同。
 >关键在于，这个隔离作用域依然在作用域树中，而不是一个新的$root。
@@ -242,7 +242,7 @@ Scope.prototype.$digest = function() {
    ...
 ```
 
-##Substituting The Parent Scope
+## Substituting The Parent Scope
 先看测试用例，
 ```javascript
     it('can take some other scope as the parent', function() {
@@ -293,7 +293,7 @@ Substituting The Parent Scope是指，“我是一个父作用域，我希望我
 
 >这又是一个个人认为值得吐槽的设计，"我不知道我的父亲究竟是人还是鬼"，作为子节点还真的是可怜。这种设计将原型链和作用域链原本（基本）统一的概念分开了。再加上上文的隔离作用域概念，极易给使用者造成混淆，这种设计感觉很有问题。
 
-##scope的销毁
+## scope的销毁
 AngularJs对scope的销毁操作主要是在scope树中进行的，即删除父scope中$$children内的对应元素。在消除了对该scope对象的引用后，原型链的销毁操作主要由js垃圾回收机制完成。
 实现方式是在$new操作时存储父节点的引用，销毁时通过访问$parent，删除$parent.$$children内相应的元素。
 ```javascript
