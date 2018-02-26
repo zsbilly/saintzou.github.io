@@ -18,7 +18,7 @@ Scope.prototype.$digest = function() { _.forEach(this.$$watchers, function(watch
 ```
 作用域拥有一组观察者变量，$watch方法负责向观察者数组添加新成员。整个脏值检测过程通过$digest循环驱动，根据watchFn的结果，来决定listenerFn是否需要被调用。
 
-##如何给监测变量赋初值
+## 如何给监测变量赋初值
 该变量的初值必须是唯一的，即与该变量严格相等的变量/值只能是它自己。
 ```javascript
 function initWatchVal() { }
@@ -32,7 +32,7 @@ this.$$watchers.push(watcher); };
 答案是函数的引用地址。
 该函数被定义在闭包内，所以在系统运行时，外部不存在任何变量的值与它相等。
 
-##如何驱动脏值检测循环
+## 如何驱动脏值检测循环
 如果新值与旧值不相等，则说明该变量是”脏“的，需继续检测。
 ```javascript
 Scope.prototype.$$digestOnce = function() {
@@ -117,7 +117,7 @@ js中值NaN永远与自身不相等，需要特殊处理。
 
 >体现框架的严谨性
 
-##$eval、$apply、$evalAsync
+## $eval、$apply、$evalAsync
 目前的$eval就是一个简单的执行传入函数的函数
 ```javascript
 Scope.prototype.$eval = function(expr, locals) {
@@ -198,7 +198,7 @@ Scope.prototype.$evalAsync = function(expr) {
 };
 ```
 
-##$applyAsync##
+**$applyAsync**
 $applyAsync并不能单单的看做$apply的异步版(可能$evalAsync更像一点)，$applyAsync的功能除了在异步下驱动digest循环外，一个很重要的功能是"在一次digest循环中合并近期所有的异步操作"。这样可以大幅降低同时发起多次异步操作的场景下，页面渲染的效率。“没有必要渲染那些马上就会被复写的界面元素”，考虑到scope中的对象与dom元素有直接的关联，这一优化效果是指数级的。
 
 首先，在scope中加入$$applyAsyncQueue(有别于$evalAsync所使用的$$asyncQueue)
@@ -289,7 +289,7 @@ Scope.prototype.$applyAsync = function(expr) {
 
 ```
 
-##$postDigest
+## $postDigest
 $$postDigest的功能与$evalAsync近似，都是将一部分代码延后执行，区别在于，$evalAsync会主动触发digest循环，而$$postDigest是严格地将这部分代码放在下一次digest循环后执行，并且不会主动触发digest。
 实现的套路也与它的兄弟们近似，在scope中新增队列$$postDigestQueue，然后在每次digest循环结束时处理它。
 ```javascript
@@ -315,10 +315,10 @@ Scope.prototype.$digest = function() {
 };
 ```
 
-##异常处理
+## 异常处理
 简单来说就是$$digestOnce、$digest等涉及对watcher、listener、各种操作队列内存放的函数直接调用的地方，加上try..catch。具体代码参见原书。
 
-##watcher的销毁
+## watcher的销毁
 简单地实现这个功能就是：$watch返回一个函数，该函数负责清理这个watcher。
 ```javascript
 Scope.prototype.$watch = function(watchFn, listenerFn, valueEq) {
@@ -421,7 +421,7 @@ Scope.prototype.$watch = function(watchFn, listenerFn, valueEq) {
 当出现一个watcher里删除多个watcher的情况，会导致_.forEachRight(_.forEach也一样)遍历到被删除的变量,此时变量值为undefined,所以需要在访问iteratee前检查。
 >lodash的forEach是根据**遍历开始时**数组的大小决定遍历次数的，遍历过程中存在iteratee指向空值的可能。与此相对的，javascript原生的Array.foreach在遍历过程中会自动跳过空值元素。
 
-##$watchGroup
+## $watchGroup
 $watchGroup是AngularJs1.3之后才加入的功能，一组watcher对应一个listener。
 
 首先，可以单纯的把一个watchGroup拆成若干个watch。如下所示：
