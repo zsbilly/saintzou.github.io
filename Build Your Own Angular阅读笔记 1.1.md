@@ -4,11 +4,12 @@
 ```javascript
 function Scope() {this.$$watchers = []; }
 
-Scope.prototype.$watch = function(watchFn, listenerFn) { var watcher = {
-    watchFn: watchFn,
-    listenerFn: listenerFn
-};
-this.$$watchers.push(watcher); 
+Scope.prototype.$watch = function(watchFn, listenerFn) { 
+    var watcher = {
+        watchFn: watchFn,
+        listenerFn: listenerFn
+    };
+    this.$$watchers.push(watcher); 
 };}
 
 Scope.prototype.$digest = function() { _.forEach(this.$$watchers, function(watcher) {
@@ -37,22 +38,25 @@ this.$$watchers.push(watcher); };
 ```javascript
 Scope.prototype.$$digestOnce = function() {
 var self = this;
-var newValue, oldValue, dirty; _.forEach(this.$$watchers, function(watcher) {
-newValue = watcher.watchFn(self); oldValue = watcher.last;
-if (newValue !== oldValue) {
+var newValue, oldValue, dirty;
+ _.forEach(this.$$watchers, function(watcher) {
+    newValue = watcher.watchFn(self); oldValue = watcher.last;
+    if (newValue !== oldValue) {
       watcher.last = newValue;
       watcher.listenerFn(newValue,
 		(oldValue === initWatchVal ? newValue : oldValue),
 		self
 		); 
-dirty = true;
-} });
+    dirty = true;
+    } });
 return dirty; };
 
 //外层循环
-Scope.prototype.$digest = function() { var dirty;
-do {
-dirty = this.$$digestOnce(); } while (dirty);
+Scope.prototype.$digest = function() { 
+    var dirty;
+    do {
+        dirty = this.$$digestOnce(); } 
+    while (dirty);
 };
 ```
 **改进1**
@@ -62,9 +66,6 @@ dirty = this.$$digestOnce(); } while (dirty);
 为了减少每次$$digestOnce()的工作量，增加一个变量$$lastDirtyWatch记录上一次脏值检测的watcher,如果两次相同，则直接从对$$watchers的遍历中跳出。
 注: 回调函数中 return false的功能是终止_.foreach()遍历，而非continue。
 
-*comments*
->先吐槽，这种优化方式非常蠢，优化点并不明显，并没有从本质上降低算法的时间复杂度，在最坏情况下（下文举例），没有降低计算次数。当然，从能优化一点是一点的角度，这也算是'优化'。
->使用$$lastDirtyWatch记录上一次脏值检测的watcher，只有当$$lastDirtyWatch在$$digestOnce()遍历顺序靠前时才会有优化效果，若上次脏值检测刚好位于遍历顺序的最后一位，则没有优化效果。
 ```javascript
         it("ends the digest when the last watch is clean", function() {
             scope.array = _.range(100);
@@ -86,8 +87,11 @@ dirty = this.$$digestOnce(); } while (dirty);
             expect(watchExecutions).toBe(400);//仍然会算400次
         });
 ```
-*comments plus*
->看来AngularJs使用粗暴的循环脏值检测被广泛吐槽的现象并不是没有道理，如果采用'生产者-消费者'模型来重新设计$digest过程，可以最大限度的利用v8引擎的异步多线程能力，效率自然更高。不需要采用上文提及的恶心的优化方式。
+
+>吐槽，这种优化方式非常蠢，优化点并不明显，并没有从本质上降低算法的时间复杂度，在最坏情况下，没有降低计算次数。当然，从能优化一点是一点的角度，这也算是'优化'。
+>使用$$lastDirtyWatch记录上一次脏值检测的watcher，只有当$$lastDirtyWatch在$$digestOnce()遍历顺序靠前时才会有优化效果，若上次脏值检测刚好位于遍历顺序的最后一位，则没有优化效果。
+
+>看来AngularJs使用粗暴的循环脏值检测被广泛吐槽的现象并不是没有道理，如果将$digest过程放在浏览器引擎中实现，可以最大限度的利用v8引擎的异步多线程能力，效率自然更高。不需要采用上文提及的恶心的优化方式。
 
 **改进3**
 向外部开放valueEq参数，用以标记是否是由值相等(_.equal() )的方式判断newValue,oldValue相等，及是否使用深拷贝方式对watcher.last进行赋值。
@@ -136,7 +140,7 @@ Scope.prototype.$apply = function(expr) {
 ```
 这东西的存在意义，就是将外部代码的运行纳入到AngularJs的生命周期中去。
 
-$evalAsync是异步的$eval，需注意其与单纯的setTimeout之间的区别，$evalAsync会强制在每次digestOnce后执行，而setTimeout则把什么时候执行的权限交给浏览器。通过在scope内维护一个$$asyncQueue异步消息队列，同时在每次$digest循环中，取出队列中的任务进行处理。
+$evalAsync是异步的$eval，需注意其与单纯的setTimeout之间的区别，$evalAsync会强制在每次digestOnce之前执行，而setTimeout则把什么时候执行的权限交给浏览器。通过在scope内维护一个$$asyncQueue异步消息队列，同时在每次$digest循环中，取出队列中的任务进行处理。
 
 ```javascript
 function Scope() {
@@ -171,8 +175,7 @@ Scope.prototype.$digest = function() {
 };
 ```
 
-*comments*
->原书中为了处理watchFn内出现$evalAsync(如下文代码所示)增加了this.$$asyncQueue.length<=0的循环终止条件,然而do代码块里也出现了同样的判断条件，相当得蠢。
+>原书中为了处理watchFn内出现$evalAsync(如下文代码所示)增加了this.$$asyncQueue.length<=0的循环终止条件,然而do代码块里也出现了同样的判断条件，这块值得商榷。
 
 ```javascript
 scope.$watch(function(scope) {
@@ -183,6 +186,7 @@ scope.$watch(function(scope) {
 ```
 
 **让$evalAsync有驱动digest循环的能力**
+
 给scope增加$$phase对象，及相关方法，该对象目前有三种值，"$digest"、"$apply"和null,分别表示当前scope所处的状态，只有当$$phase为null且异步队列中有值时，$evalAsync才会驱动digest循环。$$phase对象的状态由$digest、$apply方法改变。
 ```javascript
 Scope.prototype.$evalAsync = function(expr) {
@@ -199,6 +203,7 @@ Scope.prototype.$evalAsync = function(expr) {
 ```
 
 **$applyAsync**
+
 $applyAsync并不能单单的看做$apply的异步版(可能$evalAsync更像一点)，$applyAsync的功能除了在异步下驱动digest循环外，一个很重要的功能是"在一次digest循环中合并近期所有的异步操作"。这样可以大幅降低同时发起多次异步操作的场景下，页面渲染的效率。“没有必要渲染那些马上就会被复写的界面元素”，考虑到scope中的对象与dom元素有直接的关联，这一优化效果是指数级的。
 
 首先，在scope中加入$$applyAsyncQueue(有别于$evalAsync所使用的$$asyncQueue)
