@@ -38,10 +38,12 @@ Scope.prototype.$new = function(isolated, parent) {
 ```
 
 ## $emit和$broadcast的简单实现
+
 所谓简单实现是指，实现$emit,$broadcast中除**事件传递**以外的功能。
 首先实现一个$$fireEventOnScope方法，功能是触发当前scope下的$$listeners[eventName]
+
 ```javascript
-Scope.prototype.$$fireEventOnScope = function(eventName) { 
+Scope.prototype.$$fireEventOnScope = function(eventName) {
     var listeners = this.$$listeners[eventName] || [];
      _.forEach(listeners, function(listener) {
         listener();
@@ -50,17 +52,20 @@ Scope.prototype.$$fireEventOnScope = function(eventName) {
 ```
 
 暂时将$emit和$broadcast实现为调用$$fireEventOnScope
+
 ```javascript
 Scope.prototype.$emit = function(eventName) {
-    this.$$fireEventOnScope(eventName); 
+    this.$$fireEventOnScope(eventName);
 };
 Scope.prototype.$broadcast = function(eventName) {
-    this.$$fireEventOnScope(eventName); 
+    this.$$fireEventOnScope(eventName);
 };
 ```
+
 原书注：AngualrJS的实现里并没有$$fireEventOnScope方法，只是单纯的将该功能在$emit和$broadcast中实现两遍。
 
 ## 与listener有关的扩展
+
 listener回调需要知道自己是被哪个事件触发的，所以需要构造一个event对象并将其传递给listener方法。
 ```javascript
 Scope.prototype.$$fireEventOnScope = function(eventName) { 
